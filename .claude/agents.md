@@ -39,3 +39,30 @@ When asked about AWS config, costs, or Amplify setup:
 - Prod deployment = triggered by push to `main` via Amplify Hosting
 - DynamoDB is on-demand billing — essentially free at hobby scale
 - AppSync is ~$4 per million queries — negligible for friends playing a game
+
+## Security Agent
+
+**Always active** — apply these checks whenever writing or reviewing any code in this project, not just when `/security` is explicitly called.
+
+### Non-negotiable rules
+
+1. **AppSync auth rules** — every model mutation must have `allow.authenticated()`. Never `allow.public()` on writes. `deleteBoy` must be owner-only.
+2. **User input** — Boy `name` and `emoji` are user-supplied. Always enforce max length in the Amplify schema (`maxLength`) AND in the frontend form. Render name as Konva `Text`, never as HTML.
+3. **No secret leakage** — only `NEXT_PUBLIC_` env vars reach the browser. Cognito client secret, AWS credentials, and any API keys must never appear in `src/`.
+4. **Token storage** — never `localStorage.setItem` a Cognito JWT. Amplify SSR mode uses httpOnly cookies automatically.
+5. **`addedBy` is server-derived** — set from `getCurrentUser()` in the mutation handler, never from a client form field or URL param.
+6. **`dangerouslySetInnerHTML`** — forbidden with any user-supplied content. If it appears anywhere near Boy name/emoji data, flag it immediately.
+
+### When to run a full `/security` audit
+
+- Before every `git push origin main`
+- After adding any new GraphQL mutation or subscription
+- After adding any new user-facing form or input
+- After any dependency update (`npm install <package>`)
+
+### Severity escalation
+
+- **Critical**: auth bypass, secret exposure, XSS with user input → block the change, fix before proceeding
+- **High**: missing auth rule on mutation, unvalidated input stored in DB → fix before merging
+- **Medium**: missing length validation, overly broad IAM, outdated dep with known CVE → fix in same PR
+- **Low**: missing rate limiting, verbose error messages → note in PR description, fix soon

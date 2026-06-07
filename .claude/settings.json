@@ -8,7 +8,21 @@
       "Bash(find *)",
       "Bash(grep *)",
       "Bash(cat *)",
-      "Bash(gh *)"
+      "Bash(gh *)",
+      "Bash(npm audit)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git push*)",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Before this git push, run /security to audit the staged changes for the Boy Jail security checklist (AppSync auth rules, user input validation, secret leakage, token storage). If any Critical or High issues are found, block the push and report them. If clean, proceed."
+          }
+        ]
+      }
     ]
   }
 }

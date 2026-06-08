@@ -67,3 +67,6 @@ Thumbs.db
 # ide
 .vscode/settings.json
 .idea/
+
+amplify_outputs*
+amplifyconfiguration*

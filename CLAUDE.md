@@ -12,6 +12,7 @@ Real-time multiplayer jail simulation. Friends share a live canvas, add characte
 | API + Realtime | AWS AppSync (GraphQL + subscriptions) |
 | Database | DynamoDB — Boys, Rooms tables |
 | Hosting | AWS Amplify Hosting (auto-deploys from `main`) |
+| Testing | Vitest + RTL (unit), Playwright (E2E), MSW (mocks) |
 
 ## Dev Commands
 
@@ -39,4 +40,4 @@ npm run lint       # ESLint
 
 ## Custom Commands
 
-`/dev` · `/deploy` · `/security` · `/appsync` · `/canvas` · `/cognito` · `/schema` · `/add-boy` · `/seed` · `/test`
+`/dev` · `/deploy` · `/security` · `/appsync` · `/canvas` · `/cognito` · `/schema` · `/add-boy` · `/seed` · `/test` · `/e2e`

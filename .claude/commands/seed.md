@@ -1,20 +1,29 @@
-# /seed — Seed DynamoDB with Initial Room Data
+# /seed — Seed DynamoDB with Room Data
 
-Rooms are fixed (not user-created) and must exist in DynamoDB before the app works. This command creates the seed data.
+Rooms are fixed (not user-created) and must exist in DynamoDB before the app works. This command creates the seed data for all 9 rooms in the jail map.
 
 ## Rooms to seed
 
-| id | name | type | x | y | width | height | capacity |
+Coordinates are **placeholders** until Phase 3 — they'll be replaced with real measurements from the jail map image (`public/jail-map.png`).
+
+| id | name | capacity | acceptsBoys | x | y | width | height |
 |---|---|---|---|---|---|---|---|
-| cell-block-a | Cell Block A | CELL | 50 | 50 | 200 | 150 | 12 |
-| cell-block-b | Cell Block B | CELL | 300 | 50 | 200 | 150 | 12 |
-| cafeteria | Cafeteria | CAFETERIA | 50 | 250 | 200 | 150 | 30 |
-| yard | Yard | YARD | 300 | 250 | 200 | 150 | 50 |
-| solitary | Solitary Confinement | SOLITARY | 550 | 50 | 150 | 100 | 1 |
+| max-security | Maximum Security | 10 | true | 0 | 0 | 0 | 0 |
+| general-population | General Population | (none) | true | 0 | 0 | 0 | 0 |
+| psych-ward | Psych Ward | 8 | true | 0 | 0 | 0 | 0 |
+| death-row | Death Row | 6 | true | 0 | 0 | 0 | 0 |
+| solitary-confinement | Solitary Confinement | 8 | true | 0 | 0 | 0 | 0 |
+| processing | Processing | (none) | true | 0 | 0 | 0 | 0 |
+| kitchen | Kitchen | (none) | true | 0 | 0 | 0 | 0 |
+| staff-office | Staff Office | (none) | **false** | 0 | 0 | 0 | 0 |
+| yard | Yard | (none) | true | 0 | 0 | 0 | 0 |
+| day-release | Day Release | (none) | true | 0 | 0 | 0 | 0 |
+
+`capacity` is null/unset for uncapped rooms. `acceptsBoys: false` is only on Staff Office.
 
 ## Steps
 
-1. Check that `amplify/data/resource.ts` has a Room model defined
+1. Check that `amplify/data/resource.ts` has the Room model defined
 2. Check if a seed script exists at `src/scripts/seed-rooms.ts`
 3. If not, create it using the Amplify Gen 2 client to run `createRoom` mutations for each room above
 4. Run the seed: `npx tsx src/scripts/seed-rooms.ts`
@@ -24,4 +33,8 @@ Rooms are fixed (not user-created) and must exist in DynamoDB before the app wor
 
 - Once after initial `npx ampx sandbox` setup
 - Again if you tear down and recreate the sandbox (`npx ampx sandbox --once`)
-- In CI for E2E tests (seed before tests, clean up after)
+- After updating room coordinates in Phase 3
+
+## After Phase 3 coordinate mapping
+
+Replace the zeros above with measured coordinates from the jail map image.

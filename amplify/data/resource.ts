@@ -1,17 +1,95 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 
-/*== STEP 1 ===============================================================
-The section below creates a Todo database table with a "content" field. Try
-adding a new "isDone" field as a boolean. The authorization rule below
-specifies that any unauthenticated user can "create", "read", "update", 
-and "delete" any "Todo" records.
-=========================================================================*/
+/**
+ * Boy Jail data schema — see DESIGN.md for the full design.
+ *
+ * v1 authorization model: Cognito-authenticated users can read/create/update
+ * across models, with delete restricted to record owners. Per-jail read
+ * scoping is enforced client-side by filtering on `jailId`. Proper
+ * server-side jail-scoping (custom resolvers, Cognito groups) is deferred
+ * to a later phase — acceptable for a "trusted friends" MVP.
+ */
 const schema = a.schema({
-  Todo: a
+  Jail: a
     .model({
-      content: a.string(),
+      name: a.string().required(),
+      inviteCode: a.string().required(),
+      createdBy: a.string().required(),
+      members: a.hasMany('JailMember', 'jailId'),
+      boys: a.hasMany('Boy', 'jailId'),
+      events: a.hasMany('Event', 'jailId'),
     })
-    .authorization((allow) => [allow.guest()]),
+    .secondaryIndexes((index) => [index('inviteCode')])
+    .authorization((allow) => [
+      allow.authenticated().to(['create', 'read', 'update']),
+      allow.ownerDefinedIn('createdBy').to(['delete']),
+    ]),
+
+  JailMember: a
+    .model({
+      jailId: a.id().required(),
+      userId: a.string().required(),
+      joinedAt: a.datetime().required(),
+      jail: a.belongsTo('Jail', 'jailId'),
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(['create', 'read']),
+      allow.ownerDefinedIn('userId').to(['delete']),
+    ]),
+
+  Room: a
+    .model({
+      name: a.string().required(),
+      x: a.float().required(),
+      y: a.float().required(),
+      width: a.float().required(),
+      height: a.float().required(),
+      capacity: a.integer(),
+      acceptsBoys: a.boolean().required().default(true),
+    })
+    .authorization((allow) => [allow.authenticated().to(['read'])]),
+
+  Boy: a
+    .model({
+      jailId: a.id().required(),
+      name: a.string().required(),
+      emoji: a.string().required(),
+      imageUrl: a.string(),
+      sentenceRoom: a.enum([
+        'max',
+        'general',
+        'psych',
+        'death',
+        'solitary',
+        'processing',
+        'kitchen',
+        'yard',
+        'dayRelease',
+      ]),
+      severity: a.enum(['petty', 'misdemeanor', 'felony', 'capital']),
+      crime: a.string().required(),
+      roomId: a.id().required(),
+      addedBy: a.string().required(),
+      jail: a.belongsTo('Jail', 'jailId'),
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(['create', 'read', 'update']),
+      allow.ownerDefinedIn('addedBy').to(['delete']),
+    ]),
+
+  Event: a
+    .model({
+      jailId: a.id().required(),
+      actorUserId: a.string().required(),
+      action: a.enum(['create', 'move', 'delete']),
+      targetBoyId: a.id().required(),
+      fromRoomId: a.id(),
+      toRoomId: a.id(),
+      jail: a.belongsTo('Jail', 'jailId'),
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(['create', 'read']),
+    ]),
 });
 
 export type Schema = ClientSchema<typeof schema>;
@@ -19,35 +97,6 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: 'identityPool',
+    defaultAuthorizationMode: 'userPool',
   },
 });
-
-/*== STEP 2 ===============================================================
-Go to your frontend source code. From your client-side code, generate a
-Data client to make CRUDL requests to your table. (THIS SNIPPET WILL ONLY
-WORK IN THE FRONTEND CODE FILE.)
-
-Using JavaScript or Next.js React Server Components, Middleware, Server 
-Actions or Pages Router? Review how to generate Data clients for those use
-cases: https://docs.amplify.aws/gen2/build-a-backend/data/connect-to-API/
-=========================================================================*/
-
-/*
-"use client"
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "@/amplify/data/resource";
-
-const client = generateClient<Schema>() // use this Data client for CRUDL requests
-*/
-
-/*== STEP 3 ===============================================================
-Fetch records from the database and use them in your frontend component.
-(THIS SNIPPET WILL ONLY WORK IN THE FRONTEND CODE FILE.)
-=========================================================================*/
-
-/* For example, in a React component, you can use this snippet in your
-  function's RETURN statement */
-// const { data: todos } = await client.models.Todo.list()
-
-// return <ul>{todos.map(todo => <li key={todo.id}>{todo.content}</li>)}</ul>

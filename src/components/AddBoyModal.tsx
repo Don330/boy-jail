@@ -102,7 +102,7 @@ export function AddBoyModal({ jailId, onClose, onAdded }: Props) {
                 maxLength={30}
                 required
                 placeholder="e.g. Big Steve"
-                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900"
               />
             </div>
             <div className="w-20">
@@ -114,7 +114,7 @@ export function AddBoyModal({ jailId, onClose, onAdded }: Props) {
                 maxLength={2}
                 required
                 placeholder="😈"
-                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-center text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900"
               />
             </div>
           </div>
@@ -128,7 +128,7 @@ export function AddBoyModal({ jailId, onClose, onAdded }: Props) {
               maxLength={60}
               required
               placeholder="e.g. Stole the last slice of pizza"
-              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900"
             />
           </div>
 
@@ -155,7 +155,7 @@ export function AddBoyModal({ jailId, onClose, onAdded }: Props) {
             <select
               value={sentenceRoom}
               onChange={e => setSentenceRoom(e.target.value as SentenceRoomValue)}
-              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white"
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white"
             >
               {SENTENCE_ROOMS.map(r => (
                 <option key={r.value} value={r.value}>{r.label}</option>

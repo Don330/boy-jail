@@ -3,6 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { client } from '@/lib/data-client';
+import { JailCanvas } from '@/components/JailCanvas';
 
 type Jail = { id: string; name: string; inviteCode: string };
 
@@ -17,18 +18,18 @@ export default function JailPage() {
   }, [id]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50">
-      <div className="text-center space-y-2">
-        <h1 className="text-2xl font-bold text-zinc-900">
-          {jail ? jail.name : 'Loading…'}
-        </h1>
+    <div className="min-h-screen flex flex-col bg-zinc-100">
+      <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-zinc-200">
+        <h1 className="text-lg font-bold text-zinc-900">{jail?.name ?? 'Loading…'}</h1>
         {jail && (
-          <p className="text-sm text-zinc-500">
-            Invite code: <span className="font-mono font-semibold tracking-widest">{jail.inviteCode}</span>
-          </p>
+          <span className="text-xs text-zinc-500">
+            Invite: <span className="font-mono font-semibold tracking-widest text-zinc-700">{jail.inviteCode}</span>
+          </span>
         )}
-        <p className="text-xs text-zinc-400 pt-4">Canvas coming in Phase 3</p>
-      </div>
+      </header>
+      <main className="flex-1 p-4">
+        <JailCanvas jailId={id} />
+      </main>
     </div>
   );
 }

@@ -16,7 +16,7 @@ export default function JoinPage() {
       try {
         const { username } = await getCurrentUser();
 
-        const { data: jails, errors } = await client.models.Jail.listByInviteCode(
+        const { data: jails, errors } = await client.models.Jail.listJailByInviteCode(
           { inviteCode: code.toUpperCase() },
           { limit: 1 }
         );

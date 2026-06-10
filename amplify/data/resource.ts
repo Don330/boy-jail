@@ -47,7 +47,7 @@ const schema = a.schema({
       capacity: a.integer(),
       acceptsBoys: a.boolean().required().default(true),
     })
-    .authorization((allow) => [allow.authenticated().to(['read'])]),
+    .authorization((allow) => [allow.authenticated()]),
 
   Boy: a
     .model({

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-// AmplifyProvider wired in Phase 2 — Turbopack compatibility issue with @aws-amplify/ui-react
+import { AmplifyProvider } from "@/lib/amplify-config";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,7 +29,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {children}
+        <AmplifyProvider>{children}</AmplifyProvider>
       </body>
     </html>
   );

@@ -71,7 +71,7 @@ function BoyToken({ boy, x, y, onDragEnd }: {
   );
 }
 
-export function JailCanvas({ jailId }: { jailId: string }) {
+export function JailCanvas({ jailId, boyVersion = 0 }: { jailId: string; boyVersion?: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
@@ -107,7 +107,7 @@ export function JailCanvas({ jailId }: { jailId: string }) {
     client.models.Boy.list({ filter: { jailId: { eq: jailId } } }).then(({ data }) => {
       if (data) setBoys(data as Boy[]);
     });
-  }, [jailId]);
+  }, [jailId, boyVersion]);
 
   function snapBack(boyId: string) {
     setResetKeys(prev => ({ ...prev, [boyId]: (prev[boyId] ?? 0) + 1 }));

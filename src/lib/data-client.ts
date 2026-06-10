@@ -1,5 +1,6 @@
 'use client';
 
+import '@/lib/amplify-setup';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 

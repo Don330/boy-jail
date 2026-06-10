@@ -1,5 +1,4 @@
 import { fetchAuthSession } from 'aws-amplify/auth/server';
-import { runWithAmplifyServerContext } from 'aws-amplify/adapter-core';
 import { createServerRunner } from '@aws-amplify/adapter-nextjs';
 import { NextRequest, NextResponse } from 'next/server';
 import outputs from '../amplify_outputs.json';

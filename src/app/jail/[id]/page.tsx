@@ -7,6 +7,7 @@ import { client } from '@/lib/data-client';
 import { JailCanvas } from '@/components/JailCanvas';
 import { AddBoyModal } from '@/components/AddBoyModal';
 import { ToastContainer } from '@/components/ToastContainer';
+import { ActivityFeed } from '@/components/ActivityFeed';
 import { useToasts } from '@/hooks/useToasts';
 
 type Jail = { id: string; name: string; inviteCode: string };
@@ -46,15 +47,18 @@ export default function JailPage() {
         </div>
       </header>
 
-      <main className="flex-1 p-4 overflow-hidden">
-        {currentUsername && (
-          <JailCanvas
-            jailId={id}
-            currentUsername={currentUsername}
-            onActivity={addToast}
-          />
-        )}
-      </main>
+      <div className="flex-1 flex overflow-hidden">
+        <main className="flex-1 p-4 overflow-hidden">
+          {currentUsername && (
+            <JailCanvas
+              jailId={id}
+              currentUsername={currentUsername}
+              onActivity={addToast}
+            />
+          )}
+        </main>
+        <ActivityFeed jailId={id} />
+      </div>
 
       {showAddBoy && (
         <AddBoyModal

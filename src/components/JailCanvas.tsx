@@ -116,7 +116,9 @@ export function JailCanvas({ jailId, currentUsername, onActivity }: JailCanvasPr
   useEffect(() => {
     function update() {
       if (containerRef.current) {
-        setScale(containerRef.current.offsetWidth / MAP_W);
+        const w = containerRef.current.offsetWidth;
+        const h = containerRef.current.offsetHeight;
+        setScale(Math.min(w / MAP_W, h / MAP_H));
       }
     }
     update();
@@ -238,7 +240,7 @@ export function JailCanvas({ jailId, currentUsername, onActivity }: JailCanvasPr
   }
 
   return (
-    <div ref={containerRef} className="w-full">
+    <div ref={containerRef} className="w-full h-full flex items-center justify-center">
       <Stage width={MAP_W * scale} height={MAP_H * scale} scaleX={scale} scaleY={scale}>
         <Layer>
           {bgImage && <KonvaImage image={bgImage} width={MAP_W} height={MAP_H} />}

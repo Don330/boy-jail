@@ -28,7 +28,7 @@ export default function JailPage() {
   }, [id]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-zinc-100">
+    <div className="h-screen flex flex-col overflow-hidden bg-zinc-100">
       <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-zinc-200">
         <h1 className="text-lg font-bold text-zinc-900">{jail?.name ?? 'Loading…'}</h1>
         <div className="flex items-center gap-4">
@@ -46,7 +46,7 @@ export default function JailPage() {
         </div>
       </header>
 
-      <main className="flex-1 p-4">
+      <main className="flex-1 p-4 overflow-hidden">
         {currentUsername && (
           <JailCanvas
             jailId={id}

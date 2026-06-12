@@ -71,14 +71,25 @@ function BoyToken({ boy, x, y, onDragEnd }: {
   );
 }
 
-export function JailCanvas({ jailId, boyVersion = 0 }: { jailId: string; boyVersion?: number }) {
+interface JailCanvasProps {
+  jailId: string;
+  currentUsername: string;
+  onActivity?: (message: string) => void;
+}
+
+export function JailCanvas({ jailId, currentUsername, onActivity }: JailCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [boys, setBoys] = useState<Boy[]>([]);
-  // Changing a boy's reset key forces its token to remount at the computed position (snap-back)
   const [resetKeys, setResetKeys] = useState<Record<string, number>>({});
+
+  // Refs so subscription callbacks always read latest state without recreating subscriptions
+  const boysRef = useRef<Boy[]>([]);
+  const roomsRef = useRef<Room[]>([]);
+  useEffect(() => { boysRef.current = boys; }, [boys]);
+  useEffect(() => { roomsRef.current = rooms; }, [rooms]);
 
   useEffect(() => {
     const img = new window.Image();
@@ -103,11 +114,77 @@ export function JailCanvas({ jailId, boyVersion = 0 }: { jailId: string; boyVers
     });
   }, []);
 
+  // Initial fetch of boys for this jail
   useEffect(() => {
     client.models.Boy.list({ filter: { jailId: { eq: jailId } } }).then(({ data }) => {
       if (data) setBoys(data as Boy[]);
     });
-  }, [jailId, boyVersion]);
+  }, [jailId]);
+
+  // Subscribe: a boy was added — add to canvas if not already present
+  useEffect(() => {
+    const sub = client.models.Boy.onCreate({
+      filter: { jailId: { eq: jailId } },
+    }).subscribe({
+      next: (boy) => {
+        setBoys(prev => prev.some(b => b.id === boy.id) ? prev : [...prev, boy as Boy]);
+      },
+      error: (err) => console.error('Boy.onCreate error', err),
+    });
+    return () => sub.unsubscribe();
+  }, [jailId]);
+
+  // Subscribe: a boy was updated (moved) — update roomId in canvas
+  useEffect(() => {
+    const sub = client.models.Boy.onUpdate({
+      filter: { jailId: { eq: jailId } },
+    }).subscribe({
+      next: (boy) => {
+        setBoys(prev => prev.map(b => b.id === boy.id ? { ...b, ...(boy as Boy) } : b));
+      },
+      error: (err) => console.error('Boy.onUpdate error', err),
+    });
+    return () => sub.unsubscribe();
+  }, [jailId]);
+
+  // Subscribe: a boy was deleted — remove from canvas
+  useEffect(() => {
+    const sub = client.models.Boy.onDelete({
+      filter: { jailId: { eq: jailId } },
+    }).subscribe({
+      next: (boy) => {
+        setBoys(prev => prev.filter(b => b.id !== boy.id));
+      },
+      error: (err) => console.error('Boy.onDelete error', err),
+    });
+    return () => sub.unsubscribe();
+  }, [jailId]);
+
+  // Subscribe: an event was created — show a toast for other users' actions
+  useEffect(() => {
+    const sub = client.models.Event.onCreate({
+      filter: { jailId: { eq: jailId } },
+    }).subscribe({
+      next: (event) => {
+        // Skip events created by the current user — no need to notify yourself
+        if (event.actorUserId === currentUsername) return;
+
+        const boy = boysRef.current.find(b => b.id === event.targetBoyId);
+        const label = boy ? `${boy.emoji} ${boy.name}` : 'A boy';
+        const toRoom = roomsRef.current.find(r => r.id === event.toRoomId);
+
+        if (event.action === 'create') {
+          onActivity?.(`${event.actorUserId} added ${label}`);
+        } else if (event.action === 'move') {
+          onActivity?.(`${event.actorUserId} moved ${label} to ${toRoom?.name ?? event.toRoomId}`);
+        } else if (event.action === 'delete') {
+          onActivity?.(`${event.actorUserId} removed ${label}`);
+        }
+      },
+      error: (err) => console.error('Event.onCreate error', err),
+    });
+    return () => sub.unsubscribe();
+  }, [jailId, currentUsername, onActivity]);
 
   function snapBack(boyId: string) {
     setResetKeys(prev => ({ ...prev, [boyId]: (prev[boyId] ?? 0) + 1 }));
@@ -129,11 +206,10 @@ export function JailCanvas({ jailId, boyVersion = 0 }: { jailId: string; boyVers
     setBoys(prev => prev.map(b => b.id === boy.id ? { ...b, roomId: target.id } : b));
 
     try {
-      const { username } = await getCurrentUser();
       await client.models.Boy.update({ id: boy.id, roomId: target.id });
       await client.models.Event.create({
         jailId,
-        actorUserId: username,
+        actorUserId: currentUsername,
         action: 'move',
         targetBoyId: boy.id,
         fromRoomId,

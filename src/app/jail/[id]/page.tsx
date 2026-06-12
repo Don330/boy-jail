@@ -2,22 +2,29 @@
 
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { getCurrentUser } from 'aws-amplify/auth';
 import { client } from '@/lib/data-client';
 import { JailCanvas } from '@/components/JailCanvas';
 import { AddBoyModal } from '@/components/AddBoyModal';
+import { ToastContainer } from '@/components/ToastContainer';
+import { useToasts } from '@/hooks/useToasts';
 
 type Jail = { id: string; name: string; inviteCode: string };
 
 export default function JailPage() {
   const { id } = useParams<{ id: string }>();
   const [jail, setJail] = useState<Jail | null>(null);
+  const [currentUsername, setCurrentUsername] = useState('');
   const [showAddBoy, setShowAddBoy] = useState(false);
-  const [boyVersion, setBoyVersion] = useState(0);
+  const { toasts, addToast } = useToasts();
 
   useEffect(() => {
     client.models.Jail.get({ id }).then(({ data }) => {
       if (data) setJail(data);
     });
+    // Get the logged-in username once so we can pass it to the canvas
+    // (used to skip toasts for the current user's own actions)
+    getCurrentUser().then(({ username }) => setCurrentUsername(username));
   }, [id]);
 
   return (
@@ -40,16 +47,24 @@ export default function JailPage() {
       </header>
 
       <main className="flex-1 p-4">
-        <JailCanvas jailId={id} boyVersion={boyVersion} />
+        {currentUsername && (
+          <JailCanvas
+            jailId={id}
+            currentUsername={currentUsername}
+            onActivity={addToast}
+          />
+        )}
       </main>
 
       {showAddBoy && (
         <AddBoyModal
           jailId={id}
           onClose={() => setShowAddBoy(false)}
-          onAdded={() => setBoyVersion(v => v + 1)}
+          onAdded={() => setShowAddBoy(false)}
         />
       )}
+
+      <ToastContainer toasts={toasts} />
     </div>
   );
 }

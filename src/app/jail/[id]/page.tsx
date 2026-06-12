@@ -8,6 +8,7 @@ import { JailCanvas } from '@/components/JailCanvas';
 import { AddBoyModal } from '@/components/AddBoyModal';
 import { ToastContainer } from '@/components/ToastContainer';
 import { ActivityFeed } from '@/components/ActivityFeed';
+import { PresenceIndicator } from '@/components/PresenceIndicator';
 import { useToasts } from '@/hooks/useToasts';
 
 type Jail = { id: string; name: string; inviteCode: string };
@@ -31,7 +32,10 @@ export default function JailPage() {
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-zinc-100">
       <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-zinc-200">
-        <h1 className="text-lg font-bold text-zinc-900">{jail?.name ?? 'Loading…'}</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-lg font-bold text-zinc-900">{jail?.name ?? 'Loading…'}</h1>
+          {currentUsername && <PresenceIndicator jailId={id} currentUsername={currentUsername} />}
+        </div>
         <div className="flex items-center gap-4">
           {jail && (
             <span className="text-xs text-zinc-500">

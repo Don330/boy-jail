@@ -90,6 +90,14 @@ const schema = a.schema({
     .authorization((allow) => [
       allow.authenticated().to(['create', 'read']),
     ]),
+
+  Presence: a
+    .model({
+      jailId: a.id().required(),
+      userId: a.string().required(),
+      lastSeen: a.datetime().required(),
+    })
+    .authorization((allow) => [allow.authenticated()]),
 });
 
 export type Schema = ClientSchema<typeof schema>;

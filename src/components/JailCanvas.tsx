@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Stage, Layer, Image as KonvaImage, Group, Circle, Text } from 'react-konva';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { client } from '@/lib/data-client';
+import { BoyCard } from '@/components/BoyCard';
 
 const MAP_W = 1536;
 const MAP_H = 1024;
@@ -15,7 +16,9 @@ type Room = {
 };
 type Boy = {
   id: string; name: string; emoji: string;
-  roomId: string; addedBy: string; severity: string | null;
+  roomId: string; addedBy: string;
+  severity: string | null; sentenceRoom: string | null; crime: string;
+  jailId: string;
 };
 
 function getRoomAtPoint(x: number, y: number, rooms: Room[]) {
@@ -48,12 +51,24 @@ function severityFill(s: string | null) {
   return '#e4e4e7';
 }
 
-function BoyToken({ boy, x, y, onDragEnd }: {
+function BoyToken({ boy, x, y, onDragEnd, onSelect }: {
   boy: Boy; x: number; y: number;
   onDragEnd: (x: number, y: number) => void;
+  onSelect: () => void;
 }) {
+  // Prevent click firing after a drag — set true on dragStart, clear on next frame after dragEnd
+  const draggingRef = useRef(false);
+
   return (
-    <Group x={x} y={y} draggable onDragEnd={e => onDragEnd(e.target.x(), e.target.y())}>
+    <Group
+      x={x} y={y} draggable
+      onDragStart={() => { draggingRef.current = true; }}
+      onDragEnd={e => {
+        onDragEnd(e.target.x(), e.target.y());
+        requestAnimationFrame(() => { draggingRef.current = false; });
+      }}
+      onClick={() => { if (!draggingRef.current) onSelect(); }}
+    >
       <Circle radius={22} fill={severityFill(boy.severity)} stroke="#292524" strokeWidth={1.5} shadowBlur={4} shadowOpacity={0.2} />
       <Text text={boy.emoji} fontSize={20} offsetX={10} offsetY={10} listening={false} />
       <Text
@@ -84,6 +99,7 @@ export function JailCanvas({ jailId, currentUsername, onActivity }: JailCanvasPr
   const [rooms, setRooms] = useState<Room[]>([]);
   const [boys, setBoys] = useState<Boy[]>([]);
   const [resetKeys, setResetKeys] = useState<Record<string, number>>({});
+  const [selectedBoy, setSelectedBoy] = useState<Boy | null>(null);
 
   // Refs so subscription callbacks always read latest state without recreating subscriptions
   const boysRef = useRef<Boy[]>([]);
@@ -235,11 +251,24 @@ export function JailCanvas({ jailId, currentUsername, onActivity }: JailCanvasPr
                 x={pos.x}
                 y={pos.y}
                 onDragEnd={(x, y) => handleDragEnd(boy, x, y)}
+                onSelect={() => setSelectedBoy(boy)}
               />
             );
           })}
         </Layer>
       </Stage>
+
+      {selectedBoy && (
+        <BoyCard
+          boy={selectedBoy}
+          currentUsername={currentUsername}
+          onClose={() => setSelectedBoy(null)}
+          onDeleted={(id) => {
+            setBoys(prev => prev.filter(b => b.id !== id));
+            setSelectedBoy(null);
+          }}
+        />
+      )}
     </div>
   );
 }

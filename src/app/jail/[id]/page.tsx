@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getCurrentUser } from 'aws-amplify/auth';
+import { getCurrentUser, fetchUserAttributes } from 'aws-amplify/auth';
 import { client } from '@/lib/data-client';
 import { JailCanvas } from '@/components/JailCanvas';
 import { AddBoyModal } from '@/components/AddBoyModal';
@@ -17,6 +17,7 @@ export default function JailPage() {
   const { id } = useParams<{ id: string }>();
   const [jail, setJail] = useState<Jail | null>(null);
   const [currentUsername, setCurrentUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [showAddBoy, setShowAddBoy] = useState(false);
   const { toasts, addToast } = useToasts();
 
@@ -24,9 +25,16 @@ export default function JailPage() {
     client.models.Jail.get({ id }).then(({ data }) => {
       if (data) setJail(data);
     });
-    // Get the logged-in username once so we can pass it to the canvas
-    // (used to skip toasts for the current user's own actions)
-    getCurrentUser().then(({ username }) => setCurrentUsername(username));
+    // Get the logged-in user. `username` is the Cognito sub (UUID) — we keep
+    // it for unique IDs and ownership checks. The email-derived `displayName`
+    // is shown in UI (avatar initial, etc).
+    (async () => {
+      const { username } = await getCurrentUser();
+      setCurrentUsername(username);
+      const attrs = await fetchUserAttributes();
+      const email = attrs.email ?? '';
+      setDisplayName(email.split('@')[0] || username);
+    })();
   }, [id]);
 
   return (
@@ -34,7 +42,9 @@ export default function JailPage() {
       <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-zinc-200">
         <div className="flex items-center gap-4">
           <h1 className="text-lg font-bold text-zinc-900">{jail?.name ?? 'Loading…'}</h1>
-          {currentUsername && <PresenceIndicator jailId={id} currentUsername={currentUsername} />}
+          {currentUsername && displayName && (
+            <PresenceIndicator jailId={id} currentUsername={currentUsername} displayName={displayName} />
+          )}
         </div>
         <div className="flex items-center gap-4">
           {jail && (

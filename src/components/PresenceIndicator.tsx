@@ -33,26 +33,28 @@ function colorFromName(name: string) {
 
 interface Props {
   jailId: string;
-  currentUsername: string;
+  currentUsername: string;   // Cognito sub — used only for the stable record id
+  displayName: string;       // Human-readable name shown in the avatar
 }
 
-export function PresenceIndicator({ jailId, currentUsername }: Props) {
+export function PresenceIndicator({ jailId, currentUsername, displayName }: Props) {
   const [presences, setPresences] = useState<Presence[]>([]);
   const myIdRef = useRef(presenceId(jailId, currentUsername));
 
-  // Upsert: try update first; if record doesn't exist yet, create it
+  // Upsert: try update first; if record doesn't exist yet, create it.
+  // Stores `displayName` in the `userId` field so other clients can render
+  // a friendly initial instead of the Cognito sub UUID.
   async function heartbeat() {
     const id = myIdRef.current;
     const lastSeen = new Date().toISOString();
     try {
-      const { data } = await client.models.Presence.update({ id, lastSeen });
+      const { data } = await client.models.Presence.update({ id, lastSeen, userId: displayName });
       if (!data) {
-        await client.models.Presence.create({ id, jailId, userId: currentUsername, lastSeen });
+        await client.models.Presence.create({ id, jailId, userId: displayName, lastSeen });
       }
     } catch {
-      // If update fails because the record was missing, create it
       try {
-        await client.models.Presence.create({ id, jailId, userId: currentUsername, lastSeen });
+        await client.models.Presence.create({ id, jailId, userId: displayName, lastSeen });
       } catch (err) {
         console.error('Presence heartbeat failed', err);
       }
@@ -114,7 +116,7 @@ export function PresenceIndicator({ jailId, currentUsername }: Props) {
   return (
     <div className="flex items-center -space-x-2">
       {online.map(p => {
-        const isMe = p.userId === currentUsername;
+        const isMe = p.id === myIdRef.current;
         const initial = (p.userId[0] ?? '?').toUpperCase();
         return (
           <div

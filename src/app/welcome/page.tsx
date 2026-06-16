@@ -2,12 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser } from 'aws-amplify/auth';
+import { fetchAuthSession } from 'aws-amplify/auth';
 import { client } from '@/lib/data-client';
-
-function generateInviteCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
-}
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -22,20 +18,14 @@ export default function WelcomePage() {
     setCreating(true);
     setError(null);
     try {
-      const { username } = await getCurrentUser();
-      const code = generateInviteCode();
-      const { data: jail, errors } = await client.models.Jail.create({
+      const { data: jail, errors } = await client.mutations.startJail({
         name: jailName.trim(),
-        inviteCode: code,
-        createdBy: username,
       });
       if (errors?.length || !jail) throw new Error(errors?.[0]?.message ?? 'Failed to create jail');
 
-      await client.models.JailMember.create({
-        jailId: jail.id,
-        userId: username,
-        joinedAt: new Date().toISOString(),
-      });
+      // Force a new ID token so the freshly-assigned `jail-<id>` group claim
+      // is present on the very next GraphQL call from this client.
+      await fetchAuthSession({ forceRefresh: true });
 
       router.replace(`/jail/${jail.id}`);
     } catch (err) {

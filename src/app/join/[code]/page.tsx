@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { getCurrentUser } from 'aws-amplify/auth';
+import { fetchAuthSession } from 'aws-amplify/auth';
 import { client } from '@/lib/data-client';
 
 export default function JoinPage() {
@@ -14,31 +14,19 @@ export default function JoinPage() {
   useEffect(() => {
     async function join() {
       try {
-        const { username } = await getCurrentUser();
-
-        const { data: jails, errors } = await client.models.Jail.listJailByInviteCode(
-          { inviteCode: code.toUpperCase() },
-          { limit: 1 }
-        );
-        if (errors?.length || !jails?.length) {
-          setError('No jail found with that invite code.');
+        const { data: jail, errors } = await client.mutations.joinJail({
+          inviteCode: code.toUpperCase(),
+        });
+        if (errors?.length || !jail) {
+          setError(errors?.[0]?.message ?? 'No jail found with that invite code.');
           setStatus('error');
           return;
         }
 
-        const jail = jails[0];
-
-        const { data: existing } = await client.models.JailMember.list({
-          filter: { jailId: { eq: jail.id }, userId: { eq: username } },
-        });
-
-        if (!existing?.length) {
-          await client.models.JailMember.create({
-            jailId: jail.id,
-            userId: username,
-            joinedAt: new Date().toISOString(),
-          });
-        }
+        // Force a new ID token so the newly-granted jail group claim is on the
+        // next GraphQL call. Without this, the jail page would 401 on its first
+        // few queries until the token rotated naturally.
+        await fetchAuthSession({ forceRefresh: true });
 
         router.replace(`/jail/${jail.id}`);
       } catch (err) {

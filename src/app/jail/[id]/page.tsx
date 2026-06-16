@@ -1,8 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getCurrentUser, fetchUserAttributes } from 'aws-amplify/auth';
 import { client } from '@/lib/data-client';
 import { JailCanvas } from '@/components/JailCanvas';
 import { AddBoyModal } from '@/components/AddBoyModal';
@@ -10,32 +10,60 @@ import { ToastContainer } from '@/components/ToastContainer';
 import { ActivityFeed } from '@/components/ActivityFeed';
 import { PresenceIndicator } from '@/components/PresenceIndicator';
 import { useToasts } from '@/hooks/useToasts';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { InviteShare } from '@/components/InviteShare';
 
 type Jail = { id: string; name: string; inviteCode: string };
+type LoadState = 'loading' | 'denied' | 'ok';
 
 export default function JailPage() {
   const { id } = useParams<{ id: string }>();
   const [jail, setJail] = useState<Jail | null>(null);
-  const [currentUsername, setCurrentUsername] = useState('');
-  const [displayName, setDisplayName] = useState('');
+  const [loadState, setLoadState] = useState<LoadState>('loading');
   const [showAddBoy, setShowAddBoy] = useState(false);
   const { toasts, addToast } = useToasts();
+  const currentUser = useCurrentUser();
+  const currentUsername = currentUser?.username ?? '';
+  const displayName = currentUser?.displayName ?? '';
 
   useEffect(() => {
-    client.models.Jail.get({ id }).then(({ data }) => {
-      if (data) setJail(data);
+    let cancelled = false;
+    client.models.Jail.get({ id }).then(({ data, errors }) => {
+      if (cancelled) return;
+      if (data) {
+        setJail(data);
+        setLoadState('ok');
+      } else {
+        // Non-member: AppSync returns null data + an Unauthorized error rather
+        // than throwing. Treat any falsy data as "no access" so the user gets
+        // a clear message instead of a permanent "Loading…".
+        if (errors?.length) console.warn('Jail.get errors', errors);
+        setLoadState('denied');
+      }
     });
-    // Get the logged-in user. `username` is the Cognito sub (UUID) — we keep
-    // it for unique IDs and ownership checks. The email-derived `displayName`
-    // is shown in UI (avatar initial, etc).
-    (async () => {
-      const { username } = await getCurrentUser();
-      setCurrentUsername(username);
-      const attrs = await fetchUserAttributes();
-      const email = attrs.email ?? '';
-      setDisplayName(email.split('@')[0] || username);
-    })();
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
+
+  if (loadState === 'denied') {
+    return (
+      <div className="h-screen flex items-center justify-center bg-zinc-50 px-6">
+        <div className="max-w-sm text-center space-y-4">
+          <h1 className="text-xl font-semibold text-zinc-900">You don&apos;t have access to this jail</h1>
+          <p className="text-sm text-zinc-600">
+            Ask the jail owner for an invite code, or head back to start your own.
+          </p>
+          <Link
+            href="/welcome"
+            className="inline-block rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-700 transition-colors"
+          >
+            Back to welcome
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-zinc-100">
@@ -47,11 +75,7 @@ export default function JailPage() {
           )}
         </div>
         <div className="flex items-center gap-4">
-          {jail && (
-            <span className="text-xs text-zinc-500">
-              Invite: <span className="font-mono font-semibold tracking-widest text-zinc-700">{jail.inviteCode}</span>
-            </span>
-          )}
+          {jail && <InviteShare inviteCode={jail.inviteCode} />}
           <button
             onClick={() => setShowAddBoy(true)}
             className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 transition-colors"
@@ -67,6 +91,7 @@ export default function JailPage() {
             <JailCanvas
               jailId={id}
               currentUsername={currentUsername}
+              currentDisplayName={displayName}
               onActivity={addToast}
             />
           )}
@@ -77,6 +102,7 @@ export default function JailPage() {
       {showAddBoy && (
         <AddBoyModal
           jailId={id}
+          currentDisplayName={displayName}
           onClose={() => setShowAddBoy(false)}
           onAdded={() => setShowAddBoy(false)}
         />

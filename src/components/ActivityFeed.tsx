@@ -7,6 +7,7 @@ type Event = {
   id: string;
   jailId: string;
   actorUserId: string;
+  actorName: string | null;
   action: string | null;
   targetBoyId: string;
   fromRoomId: string | null;
@@ -36,6 +37,7 @@ function buildMessage(event: Event, boys: Boy[], rooms: Room[]): string {
   if (event.action === 'create') return `added ${label}`;
   if (event.action === 'move')   return `moved ${label} to ${toRoom?.name ?? '?'}`;
   if (event.action === 'delete') return `removed ${label}`;
+  if (event.action === 'edit')   return `updated ${label}`;
   return 'did something';
 }
 
@@ -131,7 +133,7 @@ export function ActivityFeed({ jailId }: Props) {
             {events.map(event => (
               <li key={event.id} className="px-4 py-3 hover:bg-zinc-50">
                 <p className="text-xs text-zinc-900">
-                  <span className="font-semibold">{event.actorUserId}</span>{' '}
+                  <span className="font-semibold">{event.actorName ?? event.actorUserId}</span>{' '}
                   {buildMessage(event, boys, rooms)}
                 </p>
                 <p className="text-[10px] text-zinc-400 mt-0.5">{timeAgo(event.createdAt)}</p>

@@ -13,6 +13,7 @@ type Presence = {
 const HEARTBEAT_MS = 15_000;     // how often we update our own lastSeen
 const REFRESH_MS = 10_000;       // how often we re-query active users (polling safety net)
 const ONLINE_WINDOW_MS = 30_000; // a user is "online" if lastSeen is newer than now − 30s
+const TTL_BUFFER_SEC = 5 * 60;   // DynamoDB sweeps presence records this long after the last heartbeat
 
 // Stable presence id so heartbeats keep updating the same record (no duplicates)
 function presenceId(jailId: string, userId: string) {
@@ -47,14 +48,15 @@ export function PresenceIndicator({ jailId, currentUsername, displayName }: Prop
   async function heartbeat() {
     const id = myIdRef.current;
     const lastSeen = new Date().toISOString();
+    const ttl = Math.floor(Date.now() / 1000) + TTL_BUFFER_SEC;
     try {
-      const { data } = await client.models.Presence.update({ id, lastSeen, userId: displayName });
+      const { data } = await client.models.Presence.update({ id, lastSeen, ttl, userId: displayName });
       if (!data) {
-        await client.models.Presence.create({ id, jailId, userId: displayName, lastSeen });
+        await client.models.Presence.create({ id, jailId, jailGroup: `jail-${jailId}`, userId: displayName, lastSeen, ttl });
       }
     } catch {
       try {
-        await client.models.Presence.create({ id, jailId, userId: displayName, lastSeen });
+        await client.models.Presence.create({ id, jailId, jailGroup: `jail-${jailId}`, userId: displayName, lastSeen, ttl });
       } catch (err) {
         console.error('Presence heartbeat failed', err);
       }

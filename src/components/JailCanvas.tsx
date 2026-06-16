@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Stage, Layer, Image as KonvaImage, Group, Circle, Text } from 'react-konva';
+import { Stage, Layer, Image as KonvaImage, Group, Circle, Text, Rect } from 'react-konva';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { client } from '@/lib/data-client';
 import { BoyCard } from '@/components/BoyCard';
@@ -16,7 +16,7 @@ type Room = {
 };
 type Boy = {
   id: string; name: string; emoji: string;
-  roomId: string; addedBy: string;
+  roomId: string; addedBy: string; addedByName: string | null;
   severity: string | null; sentenceRoom: string | null; crime: string;
   jailId: string;
 };
@@ -89,10 +89,11 @@ function BoyToken({ boy, x, y, onDragEnd, onSelect }: {
 interface JailCanvasProps {
   jailId: string;
   currentUsername: string;
+  currentDisplayName: string;
   onActivity?: (message: string) => void;
 }
 
-export function JailCanvas({ jailId, currentUsername, onActivity }: JailCanvasProps) {
+export function JailCanvas({ jailId, currentUsername, currentDisplayName, onActivity }: JailCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
@@ -100,6 +101,7 @@ export function JailCanvas({ jailId, currentUsername, onActivity }: JailCanvasPr
   const [boys, setBoys] = useState<Boy[]>([]);
   const [resetKeys, setResetKeys] = useState<Record<string, number>>({});
   const [selectedBoy, setSelectedBoy] = useState<Boy | null>(null);
+  const [flashingRooms, setFlashingRooms] = useState<Set<string>>(new Set<string>());
 
   // Refs so subscription callbacks always read latest state without recreating subscriptions
   const boysRef = useRef<Boy[]>([]);
@@ -208,6 +210,17 @@ export function JailCanvas({ jailId, currentUsername, onActivity }: JailCanvasPr
     setResetKeys(prev => ({ ...prev, [boyId]: (prev[boyId] ?? 0) + 1 }));
   }
 
+  function flashRoom(roomId: string) {
+    setFlashingRooms(prev => new Set([...prev, roomId]));
+    setTimeout(() => {
+      setFlashingRooms(prev => {
+        const next = new Set(prev);
+        next.delete(roomId);
+        return next;
+      });
+    }, 600);
+  }
+
   async function handleDragEnd(boy: Boy, newX: number, newY: number) {
     const target = getRoomAtPoint(newX, newY, rooms);
 
@@ -215,7 +228,7 @@ export function JailCanvas({ jailId, currentUsername, onActivity }: JailCanvasPr
 
     if (target.capacity !== null) {
       const occupants = boys.filter(b => b.roomId === target.id && b.id !== boy.id).length;
-      if (occupants >= target.capacity) { snapBack(boy.id); return; }
+      if (occupants >= target.capacity) { snapBack(boy.id); flashRoom(target.id); return; }
     }
 
     if (target.id === boy.roomId) { snapBack(boy.id); return; }
@@ -227,7 +240,9 @@ export function JailCanvas({ jailId, currentUsername, onActivity }: JailCanvasPr
       await client.models.Boy.update({ id: boy.id, roomId: target.id });
       await client.models.Event.create({
         jailId,
+        jailGroup: `jail-${jailId}`,
         actorUserId: currentUsername,
+        actorName: currentDisplayName,
         action: 'move',
         targetBoyId: boy.id,
         fromRoomId,
@@ -258,12 +273,46 @@ export function JailCanvas({ jailId, currentUsername, onActivity }: JailCanvasPr
             );
           })}
         </Layer>
+        <Layer listening={false}>
+          {rooms.map(room => {
+            const flashing = flashingRooms.has(room.id);
+            const occupancy = boys.filter(b => b.roomId === room.id).length;
+            const isFull = room.capacity !== null && occupancy >= room.capacity;
+            return (
+              <Group key={room.id}>
+                {flashing && (
+                  <Rect
+                    x={room.x} y={room.y}
+                    width={room.width} height={room.height}
+                    fill="#ef4444" opacity={0.35}
+                    cornerRadius={4}
+                  />
+                )}
+                {room.capacity !== null && (
+                  <Group x={room.x + room.width - 40} y={room.y + 6}>
+                    <Rect
+                      x={0} y={0} width={34} height={18}
+                      fill={isFull ? '#ef4444' : '#1c1917'}
+                      opacity={0.85} cornerRadius={9}
+                    />
+                    <Text
+                      text={`${occupancy}/${room.capacity}`}
+                      fontSize={11} fontStyle="bold"
+                      fill="#ffffff" width={34} align="center" y={3}
+                    />
+                  </Group>
+                )}
+              </Group>
+            );
+          })}
+        </Layer>
       </Stage>
 
       {selectedBoy && (
         <BoyCard
           boy={selectedBoy}
           currentUsername={currentUsername}
+          currentDisplayName={currentDisplayName}
           onClose={() => setSelectedBoy(null)}
           onDeleted={(id) => {
             setBoys(prev => prev.filter(b => b.id !== id));

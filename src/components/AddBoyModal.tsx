@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { getCurrentUser } from 'aws-amplify/auth';
 import { client } from '@/lib/data-client';
 
 type SeverityValue = 'petty' | 'misdemeanor' | 'felony' | 'capital';
@@ -28,11 +27,12 @@ const SEVERITIES: { value: SeverityValue; label: string; color: string }[] = [
 
 interface Props {
   jailId: string;
+  currentDisplayName: string;
   onClose: () => void;
   onAdded: () => void;
 }
 
-export function AddBoyModal({ jailId, onClose, onAdded }: Props) {
+export function AddBoyModal({ jailId, currentDisplayName, onClose, onAdded }: Props) {
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState('');
   const [crime, setCrime] = useState('');
@@ -47,10 +47,9 @@ export function AddBoyModal({ jailId, onClose, onAdded }: Props) {
     setError(null);
 
     try {
-      const { username } = await getCurrentUser();
       const room = SENTENCE_ROOMS.find(r => r.value === sentenceRoom)!;
 
-      const { data: boy, errors } = await client.models.Boy.create({
+      const { data: boy, errors } = await client.mutations.addBoy({
         jailId,
         name: name.trim(),
         emoji: emoji.trim(),
@@ -58,19 +57,10 @@ export function AddBoyModal({ jailId, onClose, onAdded }: Props) {
         severity,
         sentenceRoom,
         roomId: room.roomId,
-        addedBy: username,
+        addedByName: currentDisplayName,
       });
 
       if (errors?.length || !boy) throw new Error(errors?.[0]?.message ?? 'Failed to add boy');
-
-      await client.models.Event.create({
-        jailId,
-        actorUserId: username,
-        action: 'create',
-        targetBoyId: boy.id,
-        fromRoomId: null,
-        toRoomId: room.roomId,
-      });
 
       onAdded();
       onClose();
